@@ -68,12 +68,6 @@ app.get('/api/user', (req, res) => {
   }
 });
 
-// temp data
-const movies = [
-  { id: 1, title: 'Movie 1', soundtrack: ['Song 1', 'Song 2'] },
-  { id: 2, title: 'Movie 2', soundtrack: ['Song 3', 'Song 4'] }
-];
-
 app.get('/', (req, res) => {
   res.send('Server is running');
 });
@@ -97,17 +91,42 @@ app.get('/api/search-movies', async (req, res) => {
   }
 });
 
-app.get('/api/get-soundtrack/:id', (req, res) => {
-  const { id } = req.params;
-
-  const movie = movies.find((movie) => movie.id === Number(id));
-
-  if (!movie) {
-    return res.status(404).json({ message: 'Movie not found' });
+app.get('/api/get-soundtrack/:id', async (req, res) => {
+  const { id, title } = req.params;
+  if (!id || !title) {
+    return res.status(400).json({ message: 'Missing required movie ID or title' });
   }
 
-  res.json({ soundtrack: movie.soundtrack });
+  try {
+    const soundtrack = await fetchSoundtrackById(id, title);
+
+    res.json({ soundtrack });
+  } catch (error) {
+    console.error(`Error fetching soundtrack for movie ID ${id, title}:`, error);
+    res.status(500).json({ message: 'Failed to fetch soundtrack' });
+  }
 });
+
+// still working on implementing this....
+async function fetchSoundtrackById(id, movieTitle) {
+  try {
+    const response = await axios.get('http://ws.audioscrobbler.com/2.0/', {
+      params: {
+        method: 'track.search',
+        track: movieTitle,
+        api_key: process.env.LASTFM_API_KEY,
+        format: 'json',
+      },
+    });
+
+    const tracks = response.data.results.trackmatches.track;
+
+    return tracks.map(track => track.name); 
+  } catch (error) {
+    console.error('Error fetching soundtrack:', error);
+    throw error;
+  }
+}
 
 app.post('/api/create-playlist', async (req, res) => {
   const { songs } = req.body;
@@ -117,15 +136,8 @@ app.post('/api/create-playlist', async (req, res) => {
   }
 
   try {
-    const accessToken = req.user.accessToken;
-
-    const profileResponse = await axios.get('https://api.spotify.com/v1/me', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    });
-
-    const userId = profileResponse.data.id;
+    const accessToken = req.user.accessToken
+    const userId = req.user.spotifyId;
 
     const createPlaylistResponse = await axios.post(
       `https://api.spotify.com/v1/users/${userId}/playlists`,
@@ -163,6 +175,11 @@ app.post('/api/create-playlist', async (req, res) => {
     console.error('Error creating playlist:', error);
     res.status(500).json({ message: 'Failed to create playlist' });
   }
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Internal Server Error' });
 });
 
 app.listen(PORT, () => {

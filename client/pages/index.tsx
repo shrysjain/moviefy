@@ -20,7 +20,6 @@ const Home: React.FC = () => {
   const handleSearch = async () => {
     try {
       const response = await axiosInstance.get(`/api/search-movies?query=${query}`);
-      console.log('response:', response.data)
       setMovies(response.data);
     } catch (error) {
       console.error('Error searching movies:', error);
