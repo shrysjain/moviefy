@@ -1,31 +1,28 @@
 import React from 'react';
 
 interface Movie {
-  id: string;
-  title: string;
-  posterUrl: string;
+  imdbID: string;
+  Title: string;
+  Year: string;
 }
 
 interface SearchResultsProps {
-  results: Movie[];
-  onSelectMovie: (id: string) => void;
+  movies: Movie[];
+  onSelectMovie: (imdbID: string) => void;
+  selectedMovie: string | null;
 }
 
-const SearchResults: React.FC<SearchResultsProps> = ({ results, onSelectMovie }) => {
+const SearchResults: React.FC<SearchResultsProps> = ({ movies, onSelectMovie, selectedMovie }) => {
   return (
-    <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4'>
-      {results.map((movie) => (
-        <div key={movie.id} className="border border-gray-200 rounded-md overflow-hidden">
-          <img src={movie.posterUrl} alt={movie.title} className="w-full h-56 object-cover" />
-          <div className="p-4">
-            <h3 className="text-lg font-bold">{movie.title}</h3>
-            <button
-              onClick={() => onSelectMovie(movie.id)}
-              className="mt-2 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
-            >
-              Select Movie
-            </button>
-          </div>
+    <div className="grid grid-cols-3 gap-4">
+      {movies.map((movie) => (
+        <div
+          key={movie.imdbID}
+          className={`border border-gray-300 p-4 cursor-pointer ${selectedMovie === movie.imdbID ? 'bg-gray-200' : ''}`}
+          onClick={() => onSelectMovie(movie.imdbID)}
+        >
+          <p className="text-lg font-semibold">{movie.Title}</p>
+          <p className="text-sm text-gray-600">{movie.Year}</p>
         </div>
       ))}
     </div>

@@ -1,24 +1,16 @@
 import React from 'react';
 
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-}
-
 interface SoundtrackListProps {
-  songs: Song[];
+  soundtrack: string[];
 }
 
-const SoundtrackList: React.FC<SoundtrackListProps> = ({ songs }) => {
+const SoundtrackList: React.FC<SoundtrackListProps> = ({ soundtrack }) => {
   return (
-    <div className="mt-4">
-      <h2 className="text-lg font-bold mb-2">Soundtrack</h2>
-      <ul className="divide-y divide-gray-200">
-        {songs.map((song) => (
-          <li key={song.id} className="py-2">
-            <p className="text-gray-800">{song.title} - {song.artist}</p>
-          </li>
+    <div className="mt-8">
+      <h2 className="text-xl font-semibold mb-4">Soundtrack</h2>
+      <ul className="list-disc pl-8">
+        {soundtrack.map((song, index) => (
+          <li key={index} className="mb-2">{song}</li>
         ))}
       </ul>
     </div>

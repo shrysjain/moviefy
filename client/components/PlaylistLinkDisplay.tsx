@@ -6,8 +6,8 @@ interface PlaylistLinkDisplayProps {
 
 const PlaylistLinkDisplay: React.FC<PlaylistLinkDisplayProps> = ({ playlistLink }) => {
   return (
-    <div className="mt-4">
-      <p className="text-lg font-bold">Your Spotify Playlist:</p>
+    <div className="mt-8">
+      <p className="text-xl font-semibold mb-4">Playlist Created!</p>
       <a
         href={playlistLink}
         target="_blank"

@@ -1,15 +1,15 @@
 import React from 'react';
 
 interface CreatePlaylistButtonProps {
-  onClick: () => void;
+  onCreatePlaylist: () => void;
 }
 
-const CreatePlaylistButton: React.FC<CreatePlaylistButtonProps> = ({ onClick }) => {
+const CreatePlaylistButton: React.FC<CreatePlaylistButtonProps> = ({ onCreatePlaylist }) => {
   return (
     <div className="mt-4">
       <button
-        onClick={onClick}
-        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:bg-blue-600"
+        className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 focus:outline-none"
+        onClick={onCreatePlaylist}
       >
         Create Playlist
       </button>
