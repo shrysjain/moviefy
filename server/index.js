@@ -48,6 +48,8 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
+let spotifyAccessToken = null;
+
 // Authentication routes
 app.get('/api/auth/spotify', passport.authenticate('spotify', {
   scope: ['playlist-modify-public', 'playlist-modify-private'],
@@ -92,88 +94,94 @@ app.get('/api/search-movies', async (req, res) => {
 });
 
 app.get('/api/get-soundtrack/:id', async (req, res) => {
-  const { id, title } = req.params;
-  if (!id || !title) {
-    return res.status(400).json({ message: 'Missing required movie ID or title' });
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ message: 'Missing required movie ID' });
   }
 
   try {
-    const soundtrack = await fetchSoundtrackById(id, title);
+    const soundtrack = await fetchSoundtrackById(id);
 
     res.json({ soundtrack });
   } catch (error) {
-    console.error(`Error fetching soundtrack for movie ID ${id, title}:`, error);
+    console.error(`Error fetching soundtrack for movie ID ${id}:`, error);
     res.status(500).json({ message: 'Failed to fetch soundtrack' });
   }
 });
 
-// still working on implementing this....
-async function fetchSoundtrackById(id, movieTitle) {
+async function fetchSoundtrackById(movieId) {
+  return ['Song1', 'Song2']
+
   try {
-    const response = await axios.get('http://ws.audioscrobbler.com/2.0/', {
-      params: {
-        method: 'track.search',
-        track: movieTitle,
-        api_key: process.env.LASTFM_API_KEY,
-        format: 'json',
-      },
-    });
+    const creditsResponse = await axios.get(`https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${process.env.TMDB_API_KEY}`);
 
-    const tracks = response.data.results.trackmatches.track;
+    const musicCrew = creditsResponse.data.crew.filter(member =>
+      member.department === 'Sound' || member.job.toLowerCase().includes('music')
+    );
 
-    return tracks.map(track => track.name); 
+    const soundtrack = musicCrew.reduce((songs, member) => {
+      const songMatch = member.job.match(/["'](.+?)["']/);
+      if (songMatch) {
+        songs.push(songMatch[1]);
+      }
+      return songs;
+    }, []);
+
+    return soundtrack;
   } catch (error) {
     console.error('Error fetching soundtrack:', error);
-    throw error;
+    return [];
   }
 }
 
 app.post('/api/create-playlist', async (req, res) => {
-  const { songs } = req.body;
+  const { movie, soundtrack } = req.body;
 
-  if (!songs || !Array.isArray(songs) || songs.length === 0) {
-    return res.status(400).json({ message: 'Invalid or empty songs array' });
+  if (!spotifyAccessToken) {
+    return res.status(401).json({ error: 'User not authenticated' });
   }
 
   try {
-    const accessToken = req.user.accessToken
-    const userId = req.user.spotifyId;
+    const omdbResponse = await axios.get(`http://www.omdbapi.com/?i=${movie.imdbID}&apikey=${OMDB_API_KEY}`);
+    const moviePoster = omdbResponse.data.Poster;
 
-    const createPlaylistResponse = await axios.post(
-      `https://api.spotify.com/v1/users/${userId}/playlists`,
-      {
-        name: 'Movie Soundtrack Playlist',
-        public: false
+    const userResponse = await axios.get('https://api.spotify.com/v1/me', {
+      headers: {
+        'Authorization': `Bearer ${spotifyAccessToken}`,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    });
 
-    const playlistId = createPlaylistResponse.data.id;
-
-    // Add tracks
-    const addTracksResponse = await axios.post(
-      `https://api.spotify.com/v1/playlists/${playlistId}/tracks`,
-      {
-        uris: songs
+    const userId = userResponse.data.id;
+    const playlistResponse = await axios.post(`https://api.spotify.com/v1/users/${userId}/playlists`, {
+      name: `${movie.Title} Soundtrack`,
+      description: 'Generated with Moviefy',
+      public: true,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${spotifyAccessToken}`,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
+    });
 
-    const playlistLink = createPlaylistResponse.data.external_urls.spotify;
-    res.json({ playlistLink });
+    const playlistId = playlistResponse.data.id;
+
+    const trackUris = soundtrack.map(track => `spotify:track:${track.id}`);
+    await axios.post(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+      uris: trackUris,
+    }, {
+      headers: {
+        'Authorization': `Bearer ${spotifyAccessToken}`,
+      },
+    });
+
+    res.json({
+      name: `${movie.Title} Soundtrack`,
+      description: 'Generated with Moviefy',
+      coverArt: moviePoster,
+      link: `https://open.spotify.com/playlist/${playlistId}`,
+    });
   } catch (error) {
     console.error('Error creating playlist:', error);
-    res.status(500).json({ message: 'Failed to create playlist' });
+    res.status(500).json({ error: 'Failed to create playlist' });
   }
 });
 
